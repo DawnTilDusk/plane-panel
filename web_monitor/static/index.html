@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>本地监控</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:16px;background:#111;color:#eee}
+    .wrap{display:flex;gap:16px}
+    .panel{background:#1b1b1b;padding:12px;border-radius:8px}
+    .metrics{min-width:360px;width:360px}
+    .metric{display:flex;justify-content:space-between;margin:6px 0}
+    .ok{color:#6fd36f}.err{color:#ff6363}
+    img{max-width:800px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <h2>Drone Panel</h2>
+  <div class="wrap">
+    <div class="panel">
+      <img id="cam" src="/video_feed?index=2" alt="camera"/>
+    </div>
+    <div class="panel metrics">
+      <div class="metric"><span>状态</span><span id="st" class="err">--</span></div>
+      <div class="metric"><span>温度(℃)</span><span id="temp">--</span></div>
+      <div class="metric"><span>湿度(%RH)</span><span id="humi">--</span></div>
+      <div class="metric"><span>VOC(ug/m³)</span><span id="voc">--</span></div>
+      <div class="metric"><span>PM2.5(ug/m³)</span><span id="pm25">--</span></div>
+      <div class="metric"><span>PM10(ug/m³)</span><span id="pm10">--</span></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:12px">
+    <canvas id="chart" width="1100" height="280"></canvas>
+  </div>
+  <script>
+    const ctx=document.getElementById('chart').getContext('2d');
+    let chart;
+    async function tick(){
+      try{
+        const r=await fetch('/api/readings');
+        const j=await r.json();
+        document.getElementById('st').textContent=j.msg;
+        document.getElementById('st').className=j.ok?'ok':'err';
+        for(const k of ['temp','humi','voc','pm25','pm10']){
+          document.getElementById(k).textContent=(j[k]??'--');
+        }
+      }catch(e){
+        document.getElementById('st').textContent='fetch_err';
+        document.getElementById('st').className='err';
+      }
+    }
+    async function draw(){
+      const r=await fetch('/api/history');
+      const j=await r.json();
+      const labels=j.ts.map(t=>new Date(t*1000).toLocaleTimeString());
+      const ds=[
+        {label:'TEMP',data:j.temp,borderColor:'#ffcc00'},
+        {label:'HUMI',data:j.humi,borderColor:'#66ccff'},
+        {label:'VOC',data:j.voc,borderColor:'#ff6699'},
+        {label:'PM2.5',data:j.pm25,borderColor:'#00ff99'},
+        {label:'PM10',data:j.pm10,borderColor:'#99ff33'}
+      ];
+      const cfg={
+        type:'line',
+        data:{labels:labels,datasets:ds.map(x=>({label:x.label,data:x.data,fill:false,borderColor:x.borderColor,pointRadius:0,tension:0.2}))},
+        options:{animation:false,responsive:true,maintainAspectRatio:false,scales:{x:{ticks:{maxTicksLimit:10}},y:{beginAtZero:true}}}
+      };
+      if(!chart){chart=new Chart(ctx,cfg);}else{chart.data.labels=labels;chart.data.datasets.forEach((d,i)=>{d.data=ds[i].data});chart.update();}
+    }
+    setInterval(tick,1000);
+    tick();
+    const sc=document.createElement('script');
+    sc.src='https://cdn.jsdelivr.net/npm/chart.js';
+    sc.onload=()=>{draw();setInterval(draw,1000)};
+    document.body.appendChild(sc);
+  </script>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "header": [170, 85],
+  "length_field_offset": 2,
+  "length_field_size": 1,
+  "length_includes_header": false,
+  "trailer": 171,
+  "crc": {
+    "algorithm": "sum8",
+    "range": [0, -2],
+    "width_bytes": 1,
+    "endian": "little"
+  },
+  "fields": {
+    "pm2_5": { "offset": 4, "size": 2, "scale": 0.1, "endian": "little" },
+    "pm10":  { "offset": 6, "size": 2, "scale": 0.1, "endian": "little" }
+  }
+}
